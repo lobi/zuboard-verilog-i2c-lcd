@@ -1,0 +1,66 @@
+# Vivado Project Files
+*.jou
+*.log
+*.pb
+*.wdb
+*.wcfg
+*.backup.*
+
+# Generated Directories
+*.gen/
+*.hw/
+*.ip_user_files/
+*.runs/
+*.sim/
+*.cache/
+*.ioplanning/
+
+# Specific Generated Folders
+amplifier.gen/
+amplifier.hw/
+amplifier.ip_user_files/
+amplifier.runs/
+amplifier.sim/
+amplifier.cache/
+
+# Synthesis and Implementation
+*.dcp
+*.vdi
+*.rpt
+*.rpx
+*.xml
+!hw_1/hw.xml
+
+# Simulation Files
+*.vcd
+*.saif
+*.mem
+*.dat
+
+# IP Files (keep source, ignore generated)
+managed_ip_project/
+
+# Temporary Files
+temp/
+*.tmp
+*~
+
+# OS Files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE Files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Backup Files
+*.bak
+*.backup
+
+# HTML and Other Reports
+*.html
+vivado_pid*.str
+hs_err_pid*.log
