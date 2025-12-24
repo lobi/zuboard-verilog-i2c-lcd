@@ -175,8 +175,10 @@ module pcf8574_lcd_controller #(
                 WAIT_LO_EN0: begin
                     if (i2c_done) begin
                         delay_cnt <= 0;
-                        if (init_step == 4) begin
-                            // Clear needs 2ms delay
+                        // Fix: Check for Clear command (0x01) which needs 2ms delay
+                        // This applies to both initialization (init_step==4) and normal operation
+                        if (cmd_byte == LCD_CLEAR && cmd_rs == 0) begin
+                            // Keep existing delay_target (set to 2ms in IDLE or SEND_CMD)
                             state <= DELAY;
                         end else begin
                             delay_target <= DELAY_50US;

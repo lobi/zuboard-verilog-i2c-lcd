@@ -117,7 +117,8 @@ module ampli_controller_fsm #(
             end
             
             // Handle encoder rotation (don't change state, just update value and display)
-            if ((enc_inc || enc_dec) && !display_busy) begin
+            // ONLY in menu states - encoder should be ignored in IDLE
+            if ((enc_inc || enc_dec) && !display_busy && state != STATE_IDLE) begin
                 display_update_req <= 1;
                 case (state)
                     STATE_MENU_VOLUME: begin
@@ -132,13 +133,19 @@ module ampli_controller_fsm #(
                         if (enc_inc && treble < 10)  treble <= treble + 1;
                         if (enc_dec && treble > -10) treble <= treble - 1;
                     end
+                    default: begin
+                        // Do nothing - already covered by state != STATE_IDLE check
+                    end
                 endcase
             end
             
-            // Timeout: return to IDLE
+            // Timeout: return to IDLE and update display once
             if (timeout_cnt >= TIMEOUT_CYCLES && state != STATE_IDLE) begin
                 next_state = STATE_IDLE;
-                display_update_req <= 1;
+                // Only update display when transitioning TO idle
+                if (!display_update_req) begin
+                    display_update_req <= 1;
+                end
             end
             
             // Apply state transition
@@ -244,13 +251,10 @@ module ampli_controller_fsm #(
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
             disp_state <= DISP_IDLE;
-            lcd_cmd_valid <= 0;
-            lcd_cmd_type <= 0;
-            lcd_cmd_data <= 0;
             char_index <= 0;
             display_busy <= 0;
         end else begin
-            lcd_cmd_valid <= 0;  // Default: no command
+            // NOTE: lcd_cmd_valid/type/data are driven combinationally below.
             
             case (disp_state)
                 DISP_IDLE: begin
@@ -262,56 +266,43 @@ module ampli_controller_fsm #(
                 end
                 
                 DISP_CLEAR: begin
-                    if (lcd_ready) begin
-                        lcd_cmd_valid <= 1;
-                        lcd_cmd_type <= CMD_CLEAR;
+                    // Wait for command completion (ready->busy->ready)
+                    if (disp_cmd_done) begin
                         disp_state <= DISP_SET_LINE1;
                     end
                 end
                 
                 DISP_SET_LINE1: begin
-                    if (lcd_ready) begin
-                        lcd_cmd_valid <= 1;
-                        lcd_cmd_type <= CMD_SET_CURSOR;
-                        lcd_cmd_data <= 8'h00;  // Line 1, position 0
+                    if (disp_cmd_done) begin
                         char_index <= 0;
                         disp_state <= DISP_WRITE_L1;
                     end
                 end
                 
                 DISP_WRITE_L1: begin
-                    if (lcd_ready) begin
-                        if (char_index < 16) begin
-                            lcd_cmd_valid <= 1;
-                            lcd_cmd_type <= CMD_WRITE_DATA;
-                            lcd_cmd_data <= line1_buffer[127 - char_index*8 -: 8];
+                    if (char_index < 16) begin
+                        if (disp_cmd_done) begin
                             char_index <= char_index + 1;
-                        end else begin
-                            disp_state <= DISP_SET_LINE2;
                         end
+                    end else begin
+                        disp_state <= DISP_SET_LINE2;
                     end
                 end
                 
                 DISP_SET_LINE2: begin
-                    if (lcd_ready) begin
-                        lcd_cmd_valid <= 1;
-                        lcd_cmd_type <= CMD_SET_CURSOR;
-                        lcd_cmd_data <= 8'h40;  // Line 2, position 0
+                    if (disp_cmd_done) begin
                         char_index <= 0;
                         disp_state <= DISP_WRITE_L2;
                     end
                 end
                 
                 DISP_WRITE_L2: begin
-                    if (lcd_ready) begin
-                        if (char_index < 16) begin
-                            lcd_cmd_valid <= 1;
-                            lcd_cmd_type <= CMD_WRITE_DATA;
-                            lcd_cmd_data <= line2_buffer[127 - char_index*8 -: 8];
+                    if (char_index < 16) begin
+                        if (disp_cmd_done) begin
                             char_index <= char_index + 1;
-                        end else begin
-                            disp_state <= DISP_DONE;
                         end
+                    end else begin
+                        disp_state <= DISP_DONE;
                     end
                 end
                 
@@ -321,6 +312,87 @@ module ampli_controller_fsm #(
                 end
                 
                 default: disp_state <= DISP_IDLE;
+            endcase
+        end
+    end
+
+    //---------------------------------------------------------------------------
+    // LCD command handshake (one-cycle strobe)
+    //---------------------------------------------------------------------------
+
+    // Command lifecycle tracking for the display sequencer:
+    // - When lcd_ready=1 and a command is needed, assert lcd_cmd_valid for 1 cycle.
+    // - Wait for lcd_ready to go low (busy), then high again (done).
+    reg disp_cmd_issued;
+    reg disp_cmd_started;
+    wire disp_need_cmd;
+    wire disp_cmd_strobe;
+    wire disp_cmd_done;
+
+    assign disp_need_cmd = (disp_state != DISP_IDLE) && (disp_state != DISP_DONE);
+    assign disp_cmd_strobe = disp_need_cmd && lcd_ready && !disp_cmd_issued;
+    assign disp_cmd_done = disp_need_cmd && disp_cmd_started && lcd_ready;
+
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin
+            disp_cmd_issued <= 1'b0;
+            disp_cmd_started <= 1'b0;
+        end else begin
+            // Reset tracking when entering idle/done
+            if (disp_state == DISP_IDLE || disp_state == DISP_DONE) begin
+                disp_cmd_issued <= 1'b0;
+                disp_cmd_started <= 1'b0;
+            end else begin
+                // Mark the command as issued (strobe will fire this cycle)
+                if (disp_cmd_strobe) begin
+                    disp_cmd_issued <= 1'b1;
+                end
+                // Once the LCD controller goes busy, we know it latched the command
+                if (disp_cmd_issued && !lcd_ready) begin
+                    disp_cmd_started <= 1'b1;
+                end
+                // When done, allow next command in next cycle
+                if (disp_cmd_done) begin
+                    disp_cmd_issued <= 1'b0;
+                    disp_cmd_started <= 1'b0;
+                end
+            end
+        end
+    end
+
+    // Combinational command mux for current display state
+    always @(*) begin
+        lcd_cmd_valid = 1'b0;
+        lcd_cmd_type  = CMD_WRITE_CMD;
+        lcd_cmd_data  = 8'h00;
+
+        if (disp_cmd_strobe) begin
+            lcd_cmd_valid = 1'b1;
+            case (disp_state)
+                DISP_CLEAR: begin
+                    lcd_cmd_type = CMD_CLEAR;
+                    lcd_cmd_data = 8'h00;
+                end
+                DISP_SET_LINE1: begin
+                    lcd_cmd_type = CMD_SET_CURSOR;
+                    lcd_cmd_data = 8'h00;
+                end
+                DISP_WRITE_L1: begin
+                    lcd_cmd_type = CMD_WRITE_DATA;
+                    lcd_cmd_data = line1_buffer[127 - char_index*8 -: 8];
+                end
+                DISP_SET_LINE2: begin
+                    lcd_cmd_type = CMD_SET_CURSOR;
+                    lcd_cmd_data = 8'h40;
+                end
+                DISP_WRITE_L2: begin
+                    lcd_cmd_type = CMD_WRITE_DATA;
+                    lcd_cmd_data = line2_buffer[127 - char_index*8 -: 8];
+                end
+                default: begin
+                    lcd_cmd_type = CMD_WRITE_CMD;
+                    lcd_cmd_data = 8'h00;
+                end
             endcase
         end
     end
