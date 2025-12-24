@@ -31,6 +31,97 @@ module top (
     wire enc_inc_pulse, enc_dec_pulse;
     wire btn_press_pulse;
     
+    // Pulse stretchers - extend 100MHz pulses to be visible to 1MHz domain
+    // Each pulse stretched to ~200 clocks (~2us) to guarantee capture
+    reg [7:0] enc_inc_stretch_cnt, enc_dec_stretch_cnt, btn_stretch_cnt;
+    reg enc_inc_stretched, enc_dec_stretched, btn_stretched;
+    
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin
+            enc_inc_stretch_cnt <= 0;
+            enc_inc_stretched <= 0;
+        end else begin
+            if (enc_inc_pulse) begin
+                enc_inc_stretch_cnt <= 200;  // Stretch for 2us
+                enc_inc_stretched <= 1;
+            end else if (enc_inc_stretch_cnt > 0) begin
+                enc_inc_stretch_cnt <= enc_inc_stretch_cnt - 1;
+            end else begin
+                enc_inc_stretched <= 0;
+            end
+        end
+    end
+    
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin
+            enc_dec_stretch_cnt <= 0;
+            enc_dec_stretched <= 0;
+        end else begin
+            if (enc_dec_pulse) begin
+                enc_dec_stretch_cnt <= 200;
+                enc_dec_stretched <= 1;
+            end else if (enc_dec_stretch_cnt > 0) begin
+                enc_dec_stretch_cnt <= enc_dec_stretch_cnt - 1;
+            end else begin
+                enc_dec_stretched <= 0;
+            end
+        end
+    end
+    
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin
+            btn_stretch_cnt <= 0;
+            btn_stretched <= 0;
+        end else begin
+            if (btn_press_pulse) begin
+                btn_stretch_cnt <= 200;
+                btn_stretched <= 1;
+            end else if (btn_stretch_cnt > 0) begin
+                btn_stretch_cnt <= btn_stretch_cnt - 1;
+            end else begin
+                btn_stretched <= 0;
+            end
+        end
+    end
+    
+    // Synchronize stretched pulses to 1MHz domain
+    reg enc_inc_sync1, enc_inc_sync2, enc_inc_prev;
+    reg enc_dec_sync1, enc_dec_sync2, enc_dec_prev;
+    reg btn_sync1, btn_sync2, btn_prev;
+    wire enc_inc_1mhz, enc_dec_1mhz, btn_press_1mhz;
+    
+    always @(posedge clk_1MHz or negedge rst_n) begin
+        if (!rst_n) begin
+            enc_inc_sync1 <= 0;
+            enc_inc_sync2 <= 0;
+            enc_inc_prev <= 0;
+            enc_dec_sync1 <= 0;
+            enc_dec_sync2 <= 0;
+            enc_dec_prev <= 0;
+            btn_sync1 <= 0;
+            btn_sync2 <= 0;
+            btn_prev <= 0;
+        end else begin
+            // 2-stage synchronizer
+            enc_inc_sync1 <= enc_inc_stretched;
+            enc_inc_sync2 <= enc_inc_sync1;
+            enc_inc_prev <= enc_inc_sync2;
+            
+            enc_dec_sync1 <= enc_dec_stretched;
+            enc_dec_sync2 <= enc_dec_sync1;
+            enc_dec_prev <= enc_dec_sync2;
+            
+            btn_sync1 <= btn_stretched;
+            btn_sync2 <= btn_sync1;
+            btn_prev <= btn_sync2;
+        end
+    end
+    
+    // Edge detection - create single-cycle pulse in 1MHz domain
+    assign enc_inc_1mhz = enc_inc_sync2 && !enc_inc_prev;
+    assign enc_dec_1mhz = enc_dec_sync2 && !enc_dec_prev;
+    assign btn_press_1mhz = btn_sync2 && !btn_prev;
+    
     // Clock divider - generate 1MHz from 100MHz
     reg [6:0] clk_div_cnt;
     reg clk_1MHz;
@@ -125,13 +216,14 @@ module top (
     
     // Amplifier controller FSM
     ampli_controller_fsm #(
-        .TIMEOUT_CYCLES(5_000_000)       // 5 seconds @ 1MHz
+        .CLK_FREQ(1_000_000),            // 1MHz
+        .TIMEOUT_SEC(5)                  // 5 seconds timeout
     ) u_ampli_fsm (
         .clk           (clk_1MHz),
         .rst_n         (rst_n),
-        .enc_inc       (enc_inc_pulse),
-        .enc_dec       (enc_dec_pulse),
-        .btn_press     (btn_press_pulse),
+        .enc_inc       (enc_inc_1mhz),
+        .enc_dec       (enc_dec_1mhz),
+        .btn_press     (btn_press_1mhz),
         .lcd_init_done (lcd_init_done),
         .lcd_ready     (lcd_ready),
         .lcd_cmd_valid (lcd_cmd_valid),
