@@ -139,6 +139,7 @@ Watch the digital amplifier controller in action:
 
 ## RTL Module Documentation
 
+![Block Design](/docs/bd.png)
 ### 1. `ampli_controller_fsm.v`
 
 **Purpose**: Main controller FSM managing menu navigation, parameter updates, and LCD display updates.
