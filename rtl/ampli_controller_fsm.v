@@ -378,40 +378,44 @@ module ampli_controller_fsm #(
     // LCD command handshake (one-cycle strobe)
     //---------------------------------------------------------------------------
 
-    // Command lifecycle tracking for the display sequencer:
-    // - When lcd_ready=1 and a command is needed, assert lcd_cmd_valid for 1 cycle.
-    // - Wait for lcd_ready to go low (busy), then high again (done).
-    reg disp_cmd_issued;
-    reg disp_cmd_started;
+    // Command lifecycle tracking for the display sequencer (robust handshake):
+    // - Keep lcd_cmd_valid asserted until the LCD controller ACKs by pulling
+    //   lcd_ready low (busy). This avoids missing 1-cycle strobes when the LCD
+    //   controller runs on a slower clock.
+    // - Then wait for lcd_ready to return high (done).
+    reg  disp_cmd_pending;
+    reg  disp_cmd_started;
     wire disp_need_cmd;
-    wire disp_cmd_strobe;
+    wire disp_cmd_fire;
     wire disp_cmd_done;
 
     assign disp_need_cmd = (disp_state != DISP_IDLE) && (disp_state != DISP_DONE);
-    assign disp_cmd_strobe = disp_need_cmd && lcd_ready && !disp_cmd_issued;
+    assign disp_cmd_fire = disp_need_cmd && lcd_ready && !disp_cmd_pending && !disp_cmd_started;
     assign disp_cmd_done = disp_need_cmd && disp_cmd_started && lcd_ready;
 
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
-            disp_cmd_issued <= 1'b0;
+            disp_cmd_pending <= 1'b0;
             disp_cmd_started <= 1'b0;
         end else begin
             // Reset tracking when entering idle/done
             if (disp_state == DISP_IDLE || disp_state == DISP_DONE) begin
-                disp_cmd_issued <= 1'b0;
+                disp_cmd_pending <= 1'b0;
                 disp_cmd_started <= 1'b0;
             end else begin
-                // Mark the command as issued (strobe will fire this cycle)
-                if (disp_cmd_strobe) begin
-                    disp_cmd_issued <= 1'b1;
+                // Start presenting a new command when the LCD is ready
+                if (disp_cmd_fire) begin
+                    disp_cmd_pending <= 1'b1;
                 end
-                // Once the LCD controller goes busy, we know it latched the command
-                if (disp_cmd_issued && !lcd_ready) begin
+
+                // ACK: LCD controller latches command and goes busy
+                if (disp_cmd_pending && !lcd_ready) begin
+                    disp_cmd_pending <= 1'b0;
                     disp_cmd_started <= 1'b1;
                 end
-                // When done, allow next command in next cycle
+
+                // DONE: LCD controller returns ready high
                 if (disp_cmd_done) begin
-                    disp_cmd_issued <= 1'b0;
                     disp_cmd_started <= 1'b0;
                 end
             end
@@ -424,7 +428,8 @@ module ampli_controller_fsm #(
         lcd_cmd_type  = CMD_WRITE_CMD;
         lcd_cmd_data  = 8'h00;
 
-        if (disp_cmd_strobe) begin
+        // Hold valid until ACK (lcd_ready deasserts)
+        if (disp_cmd_fire || disp_cmd_pending) begin
             lcd_cmd_valid = 1'b1;
             case (disp_state)
                 DISP_CLEAR: begin
