@@ -140,6 +140,50 @@ Watch the digital amplifier controller in action:
 ## RTL Module Documentation
 
 ![Block Design](/docs/bd.png)
+
+### Main Controller FSM State Diagram
+
+```mermaid
+stateDiagram-v2
+    [*] --> IDLE
+    
+    IDLE --> VOLUME : btn_press
+    VOLUME --> BASS : btn_press
+    BASS --> TREBLE : btn_press
+    TREBLE --> VOLUME : btn_press
+    
+    VOLUME --> IDLE : 5s timeout
+    BASS --> IDLE : 5s timeout
+    TREBLE --> IDLE : 5s timeout
+    
+    IDLE: Welcome Screen
+    IDLE: Display: HELLO JETKING
+    IDLE: Encoder: Ignored
+    
+    VOLUME: Volume Menu (0-100)
+    VOLUME: Display: VOLUME: XXX
+    VOLUME: Line 2: Bargraph
+    
+    BASS: Bass Menu (-10 to +10)
+    BASS: Display: BASS: ±XX
+    BASS: Line 2: Position Indicator
+    
+    TREBLE: Treble Menu (-10 to +10)
+    TREBLE: Display: TREBLE: ±XX
+    TREBLE: Line 2: Position Indicator
+    
+    note right of IDLE
+        No timeout
+        Stays until button press
+    end note
+    
+    note right of VOLUME
+        Timeout resets on:
+        btn_press, enc_inc, enc_dec
+    end note
+```
+
+
 ### 1. `ampli_controller_fsm.v`
 
 **Purpose**: Main controller FSM managing menu navigation, parameter updates, and LCD display updates.
