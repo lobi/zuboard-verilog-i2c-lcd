@@ -299,39 +299,8 @@ Watch the digital amplifier controller in action:
 ## Building the Project
 
 ### Prerequisites
-- Xilinx Vivado Design Suite (2020.2 or later recommended)
-- Target FPGA: Zynq UltraScale+ or 7-series (modify constraints for your board)
-
-### Steps
-
-1. **Open the Project**
-   ```bash
-   cd D:\repos\sem4\amplifier
-   vivado amplifier.xpr
-   ```
-
-2. **Review/Update Constraints**
-   - Edit `amplifier.srcs/constrs_1/...` to match your board's pin assignments
-   - Ensure clock constraints match your FPGA's system clock
-
-3. **Synthesize**
-   - Run Synthesis (check for warnings/errors)
-   - Review resource utilization
-
-4. **Implement**
-   - Run Implementation
-   - Check timing reports (ensure all constraints are met)
-
-5. **Generate Bitstream**
-   - Generate bitstream
-   - Locate output: `amplifier.runs/impl_1/design_3_wrapper.bit`
-
-6. **Program FPGA**
-   - Connect FPGA via JTAG
-   - Open Hardware Manager
-   - Program device with generated bitstream
-
----
+- Vivado v2025.1 or later recommended
+- Target FPGA: Zynq UltraScale+ or 7-series
 
 ## Simulation and Testing
 
