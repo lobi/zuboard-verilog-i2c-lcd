@@ -60,6 +60,13 @@ module ampli_controller_fsm #(
     reg [127:0] line1_buffer;  // 16 characters
     reg [127:0] line2_buffer;  // 16 characters
     reg init_display_done;  // Track if initial display has been shown
+
+    // Helpers for rendering dynamic 2nd-line indicators
+    integer i;
+    integer pos;
+    integer fill;
+    integer tmp;
+    integer abs_tmp;
     
     // Helper variables for number to ASCII conversion
     reg [7:0] vol_d0, vol_d1, vol_d2;  // Volume digits
@@ -221,23 +228,74 @@ module ampli_controller_fsm #(
             
             STATE_MENU_VOLUME: begin
                 // Line 1: "VOLUME: 050     "
-                // Line 2: "Press btn/rotate"
                 line1_buffer = {8'h56, 8'h4F, 8'h4C, 8'h55, 8'h4D, 8'h45, 8'h3A, 8'h20, vol_d2, vol_d1, vol_d0, 8'h20, 8'h20, 8'h20, 8'h20, 8'h20};
-                line2_buffer = {8'h50, 8'h72, 8'h65, 8'h73, 8'h73, 8'h20, 8'h62, 8'h74, 8'h6E, 8'h2F, 8'h72, 8'h6F, 8'h74, 8'h61, 8'h74, 8'h65};
+
+                // Line 2: 16-cell volume bargraph (0..100)
+                // Use full-block 0xFF for filled cells, '-' for empty.
+                for (i = 0; i < 16; i = i + 1) begin
+                    line2_buffer[127 - i*8 -: 8] = 8'h2D;  // '-'
+                end
+                tmp = volume;                 // 0..100
+                fill = (tmp * 16) / 100;      // 0..16
+                for (i = 0; i < 16; i = i + 1) begin
+                    if (i < fill) begin
+                        line2_buffer[127 - i*8 -: 8] = 8'hFF;
+                    end
+                end
             end
             
             STATE_MENU_BASS: begin
                 // Line 1: "BASS: +05       "
-                // Line 2: "Press btn/rotate"
                 line1_buffer = {8'h42, 8'h41, 8'h53, 8'h53, 8'h3A, 8'h20, bass_sign, bass_d1, bass_d0, 8'h20, 8'h20, 8'h20, 8'h20, 8'h20, 8'h20, 8'h20};
-                line2_buffer = {8'h50, 8'h72, 8'h65, 8'h73, 8'h73, 8'h20, 8'h62, 8'h74, 8'h6E, 8'h2F, 8'h72, 8'h6F, 8'h74, 8'h61, 8'h74, 8'h65};
+
+                // Line 2: position indicator for -10..+10
+                // Background '-', center '|' at index 7, '*' shows current position.
+                for (i = 0; i < 16; i = i + 1) begin
+                    line2_buffer[127 - i*8 -: 8] = 8'h2D;  // '-'
+                end
+                line2_buffer[127 - 7*8 -: 8] = 8'h7C;      // '|'
+
+                tmp = bass;  // signed -10..+10
+                if (tmp == 0) begin
+                    pos = 7;
+                end else if (tmp > 0) begin
+                    // Right side: indices 8..15 (8 positions)
+                    pos = 7 + ((tmp * 8 + 5) / 10);
+                end else begin
+                    // Left side: indices 0..6 (7 positions)
+                    abs_tmp = -tmp;
+                    pos = 7 - ((abs_tmp * 7 + 5) / 10);
+                end
+                if (pos < 0)  pos = 0;
+                if (pos > 15) pos = 15;
+                line2_buffer[127 - pos*8 -: 8] = 8'h2A;     // '*'
             end
             
             STATE_MENU_TREBLE: begin
                 // Line 1: "TREBLE: +05     "
-                // Line 2: "Press btn/rotate"
                 line1_buffer = {8'h54, 8'h52, 8'h45, 8'h42, 8'h4C, 8'h45, 8'h3A, 8'h20, treb_sign, treb_d1, treb_d0, 8'h20, 8'h20, 8'h20, 8'h20, 8'h20};
-                line2_buffer = {8'h50, 8'h72, 8'h65, 8'h73, 8'h73, 8'h20, 8'h62, 8'h74, 8'h6E, 8'h2F, 8'h72, 8'h6F, 8'h74, 8'h61, 8'h74, 8'h65};
+
+                // Line 2: position indicator for -10..+10
+                // Background '-', center '|' at index 7, '*' shows current position.
+                for (i = 0; i < 16; i = i + 1) begin
+                    line2_buffer[127 - i*8 -: 8] = 8'h2D;  // '-'
+                end
+                line2_buffer[127 - 7*8 -: 8] = 8'h7C;      // '|'
+
+                tmp = treble;  // signed -10..+10
+                if (tmp == 0) begin
+                    pos = 7;
+                end else if (tmp > 0) begin
+                    // Right side: indices 8..15 (8 positions)
+                    pos = 7 + ((tmp * 8 + 5) / 10);
+                end else begin
+                    // Left side: indices 0..6 (7 positions)
+                    abs_tmp = -tmp;
+                    pos = 7 - ((abs_tmp * 7 + 5) / 10);
+                end
+                if (pos < 0)  pos = 0;
+                if (pos > 15) pos = 15;
+                line2_buffer[127 - pos*8 -: 8] = 8'h2A;     // '*'
             end
             
             default: begin
