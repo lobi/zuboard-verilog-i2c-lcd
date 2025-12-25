@@ -156,32 +156,33 @@ stateDiagram-v2
     BASS --> IDLE : 5s timeout
     TREBLE --> IDLE : 5s timeout
     
-    IDLE: Welcome Screen
-    IDLE: Display: HELLO JETKING
-    IDLE: Encoder: Ignored
-    
-    VOLUME: Volume Menu (0-100)
-    VOLUME: Display: VOLUME: XXX
-    VOLUME: Line 2: Bargraph
-    
-    BASS: Bass Menu (-10 to +10)
-    BASS: Display: BASS: ±XX
-    BASS: Line 2: Position Indicator
-    
-    TREBLE: Treble Menu (-10 to +10)
-    TREBLE: Display: TREBLE: ±XX
-    TREBLE: Line 2: Position Indicator
-    
     note right of IDLE
-        No timeout
-        Stays until button press
+        Welcome Screen
+        Display: HELLO JETKING
+        DIGITAL AMPLIFIE
+        Encoder: Ignored
     end note
     
     note right of VOLUME
-        Timeout resets on:
-        btn_press, enc_inc, enc_dec
+        Volume: 0-100
+        Display: VOLUME: XXX
+        Line 2: Bargraph
+        Timeout resets on input
+    end note
+    
+    note right of BASS
+        Bass: -10 to +10
+        Display: BASS: ±XX
+        Line 2: Position Indicator
+    end note
+    
+    note right of TREBLE
+        Treble: -10 to +10
+        Display: TREBLE: ±XX
+        Line 2: Position Indicator
     end note
 ```
+
 
 
 ### 1. `ampli_controller_fsm.v`
