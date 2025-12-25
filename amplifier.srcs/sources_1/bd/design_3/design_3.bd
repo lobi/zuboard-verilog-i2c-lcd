@@ -1,0 +1,199 @@
+{
+  "design": {
+    "design_info": {
+      "boundary_crc": "0xB07D5FE1A886BDF2",
+      "device": "xczu1cg-sbva484-1-e",
+      "gen_directory": "../../../../amplifier.gen/sources_1/bd/design_3",
+      "name": "design_3",
+      "rev_ctrl_bd_flag": "RevCtrlBdOff",
+      "synth_flow_mode": "None",
+      "tool_version": "2025.1",
+      "validated": "true"
+    },
+    "design_tree": {
+      "zynq_ultra_ps_e_0": "",
+      "top_0": ""
+    },
+    "ports": {
+      "i2c_sda_0": {
+        "direction": "IO"
+      },
+      "i2c_scl_0": {
+        "direction": "O"
+      },
+      "debug_state_0": {
+        "direction": "O",
+        "left": "2",
+        "right": "0"
+      },
+      "debug_timeout_0": {
+        "direction": "O"
+      },
+      "rst_n_0": {
+        "type": "rst",
+        "direction": "I",
+        "parameters": {
+          "INSERT_VIP": {
+            "value": "0",
+            "value_src": "default"
+          },
+          "POLARITY": {
+            "value": "ACTIVE_LOW",
+            "value_src": "default"
+          }
+        }
+      },
+      "enc_a_0": {
+        "direction": "I"
+      },
+      "enc_b_0": {
+        "direction": "I"
+      },
+      "enc_sw_0": {
+        "direction": "I"
+      }
+    },
+    "components": {
+      "zynq_ultra_ps_e_0": {
+        "vlnv": "xilinx.com:ip:zynq_ultra_ps_e:3.5",
+        "ip_revision": "7",
+        "xci_name": "design_3_zynq_ultra_ps_e_0_0",
+        "xci_path": "ip\\design_3_zynq_ultra_ps_e_0_0\\design_3_zynq_ultra_ps_e_0_0.xci",
+        "inst_hier_path": "zynq_ultra_ps_e_0",
+        "has_run_ip_tcl": "true",
+        "parameters": {
+          "PSU_DDR_RAM_HIGHADDR_OFFSET": {
+            "value": "0x00000002"
+          },
+          "PSU_DDR_RAM_LOWADDR_OFFSET": {
+            "value": "0x20000000"
+          },
+          "PSU__DDR_HIGH_ADDRESS_GUI_ENABLE": {
+            "value": "0"
+          },
+          "PSU__USE__M_AXI_GP2": {
+            "value": "0"
+          }
+        }
+      },
+      "top_0": {
+        "vlnv": "xilinx.com:module_ref:top:1.0",
+        "ip_revision": "1",
+        "xci_name": "design_3_top_0_0",
+        "xci_path": "ip\\design_3_top_0_0\\design_3_top_0_0.xci",
+        "inst_hier_path": "top_0",
+        "has_run_ip_tcl": "true",
+        "reference_info": {
+          "ref_type": "hdl",
+          "ref_name": "top",
+          "boundary_crc": "0x0"
+        },
+        "ports": {
+          "clk": {
+            "type": "clk",
+            "direction": "I",
+            "parameters": {
+              "FREQ_HZ": {
+                "value": "99999001",
+                "value_src": "user_prop"
+              },
+              "CLK_DOMAIN": {
+                "value": "design_3_zynq_ultra_ps_e_0_0_pl_clk0",
+                "value_src": "default_prop"
+              }
+            }
+          },
+          "rst_n": {
+            "type": "rst",
+            "direction": "I",
+            "parameters": {
+              "POLARITY": {
+                "value": "ACTIVE_LOW",
+                "value_src": "constant"
+              }
+            }
+          },
+          "enc_a": {
+            "direction": "I"
+          },
+          "enc_b": {
+            "direction": "I"
+          },
+          "enc_sw": {
+            "direction": "I"
+          },
+          "i2c_sda": {
+            "direction": "IO"
+          },
+          "i2c_scl": {
+            "direction": "O"
+          },
+          "debug_state": {
+            "direction": "O",
+            "left": "2",
+            "right": "0"
+          },
+          "debug_timeout": {
+            "direction": "O"
+          }
+        }
+      }
+    },
+    "nets": {
+      "Net": {
+        "ports": [
+          "i2c_sda_0",
+          "top_0/i2c_sda"
+        ]
+      },
+      "enc_a_0_1": {
+        "ports": [
+          "enc_a_0",
+          "top_0/enc_a"
+        ]
+      },
+      "enc_b_0_1": {
+        "ports": [
+          "enc_b_0",
+          "top_0/enc_b"
+        ]
+      },
+      "enc_sw_0_1": {
+        "ports": [
+          "enc_sw_0",
+          "top_0/enc_sw"
+        ]
+      },
+      "rst_n_0_1": {
+        "ports": [
+          "rst_n_0",
+          "top_0/rst_n"
+        ]
+      },
+      "top_0_debug_state": {
+        "ports": [
+          "top_0/debug_state",
+          "debug_state_0"
+        ]
+      },
+      "top_0_debug_timeout": {
+        "ports": [
+          "top_0/debug_timeout",
+          "debug_timeout_0"
+        ]
+      },
+      "top_0_i2c_scl": {
+        "ports": [
+          "top_0/i2c_scl",
+          "i2c_scl_0"
+        ]
+      },
+      "zynq_ultra_ps_e_0_pl_clk0": {
+        "ports": [
+          "zynq_ultra_ps_e_0/pl_clk0",
+          "top_0/clk"
+        ]
+      }
+    }
+  }
+}
