@@ -280,12 +280,12 @@ module ampli_controller_fsm #(
                 end
                 
                 DISP_WRITE_L1: begin
-                    if (char_index < 16) begin
-                        if (disp_cmd_done) begin
+                    if (disp_cmd_done) begin
+                        if (char_index < 15) begin
                             char_index <= char_index + 1;
+                        end else begin
+                            disp_state <= DISP_SET_LINE2;
                         end
-                    end else begin
-                        disp_state <= DISP_SET_LINE2;
                     end
                 end
                 
@@ -297,12 +297,12 @@ module ampli_controller_fsm #(
                 end
                 
                 DISP_WRITE_L2: begin
-                    if (char_index < 16) begin
-                        if (disp_cmd_done) begin
+                    if (disp_cmd_done) begin
+                        if (char_index < 15) begin
                             char_index <= char_index + 1;
+                        end else begin
+                            disp_state <= DISP_DONE;
                         end
-                    end else begin
-                        disp_state <= DISP_DONE;
                     end
                 end
                 
